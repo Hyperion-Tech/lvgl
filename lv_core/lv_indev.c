@@ -30,6 +30,7 @@
 
 #if LV_INDEV_READ_PERIOD != 0
 static void indev_proc_task(void * param);
+#endif
 static void indev_pointer_proc(lv_indev_t * i, lv_indev_data_t * data);
 static void indev_keypad_proc(lv_indev_t * i, lv_indev_data_t * data);
 static void indev_encoder_proc(lv_indev_t * i, lv_indev_data_t * data);
@@ -40,7 +41,6 @@ static void indev_proc_reset_query_handler(lv_indev_t * indev);
 static lv_obj_t * indev_search_obj(const lv_indev_proc_t * proc, lv_obj_t * obj);
 static void indev_drag(lv_indev_proc_t * state);
 static void indev_drag_throw(lv_indev_proc_t * state);
-#endif
 
 /**********************
  *  STATIC VARIABLES
@@ -317,7 +317,43 @@ static void indev_proc_task(void * param)
 
     LV_LOG_TRACE("indev task finished");
 }
+#endif
 
+void lv_indev_proc_data(lv_indev_t * i, lv_indev_data_t * data)
+{
+    /*Read and process all indevs*/
+    if(i == NULL || data == NULL) {
+        return;
+    }
+
+    indev_act = i;
+
+    /*Handle reset query before processing the point*/
+    indev_proc_reset_query_handler(i);
+
+    if(i->proc.disabled == 0) {
+        indev_proc_reset_query_handler(i);          /*The active object might deleted even in the read function*/
+        i->proc.state = data->state;
+
+        if(i->proc.state == LV_INDEV_STATE_PR) {
+            i->last_activity_time = lv_tick_get();
+        }
+
+        if(i->driver.type == LV_INDEV_TYPE_POINTER) {
+            indev_pointer_proc(i, data);
+        } else if(i->driver.type == LV_INDEV_TYPE_KEYPAD) {
+            indev_keypad_proc(i, data);
+        } else if(i->driver.type == LV_INDEV_TYPE_ENCODER) {
+            indev_encoder_proc(i, data);
+        } else if(i->driver.type == LV_INDEV_TYPE_BUTTON) {
+            indev_button_proc(i, data);
+        }
+        /*Handle reset query if it happened in during processing*/
+        indev_proc_reset_query_handler(i);
+    }
+
+    indev_act = NULL;   /*End of indev processing, so no act indev*/
+}
 
 /**
  * Process a new point from LV_INDEV_TYPE_POINTER input device
@@ -924,4 +960,3 @@ static void indev_drag_throw(lv_indev_proc_t * state)
         drag_obj->signal_func(drag_obj, LV_SIGNAL_DRAG_END, indev_act);
     }
 }
-#endif
