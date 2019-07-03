@@ -134,6 +134,13 @@ void lv_indev_get_vect(const lv_indev_t * indev, lv_point_t * point);
 void lv_indev_wait_release(lv_indev_t * indev);
 
 /**
+ * Process a single input data for the specified input device.
+ * @param indev pointer to an input device
+ * @param data pointer to an input data
+ */
+void lv_indev_proc_data(lv_indev_t * indev, lv_indev_data_t * data);
+
+/**
  * Get a pointer to the indev read task to
  * modify its parameters with `lv_task_...` functions.
  * @param indev pointer to an inout device

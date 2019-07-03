@@ -301,6 +301,57 @@ void lv_indev_wait_release(lv_indev_t * indev)
 }
 
 /**
+ * Process a single input data for the specified input device.
+ * @param indev pointer to an input device
+ * @param data pointer to an input data
+ */
+void lv_indev_proc_data(lv_indev_t * indev, lv_indev_data_t * data)
+{
+    LV_LOG_TRACE("indev read proc started");
+
+    indev_act = indev;
+
+    /*Read and process all indevs*/
+    if(indev_act->driver.disp == NULL) return; /*Not assigned to any displays*/
+
+    /*Handle reset query before processing the point*/
+    indev_proc_reset_query_handler(indev_act);
+
+    if(!indev_act->proc.disabled) {
+        /*The active object might deleted even in the read function*/
+        indev_proc_reset_query_handler(indev_act);
+        indev_obj_act = NULL;
+
+        indev_act->proc.state = data->state;
+
+        /*Save the last activity time*/
+        if(indev_act->proc.state == LV_INDEV_STATE_PR) {
+            indev_act->driver.disp->last_activity_time = lv_tick_get();
+        } else if(indev_act->driver.type == LV_INDEV_TYPE_ENCODER && data->enc_diff) {
+            indev_act->driver.disp->last_activity_time = lv_tick_get();
+        }
+
+        if(indev_act->driver.type == LV_INDEV_TYPE_POINTER) {
+            indev_pointer_proc(indev_act, data);
+        } else if(indev_act->driver.type == LV_INDEV_TYPE_KEYPAD) {
+            indev_keypad_proc(indev_act, data);
+        } else if(indev_act->driver.type == LV_INDEV_TYPE_ENCODER) {
+            indev_encoder_proc(indev_act, data);
+        } else if(indev_act->driver.type == LV_INDEV_TYPE_BUTTON) {
+            indev_button_proc(indev_act, data);
+        }
+        /*Handle reset query if it happened in during processing*/
+        indev_proc_reset_query_handler(indev_act);
+    }
+
+    /*End of indev processing, so no act indev*/
+    indev_act     = NULL;
+    indev_obj_act = NULL;
+
+    LV_LOG_TRACE("indev read proc finished");
+}
+
+/**
  * Get a pointer to the indev read task to
  * modify its parameters with `lv_task_...` functions.
  * @param indev pointer to an input device
